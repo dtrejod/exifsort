@@ -1,0 +1,10 @@
+[Unit]
+Description=Run exifsort hourly
+
+[Timer]
+OnCalendar=hourly
+AccuracySec=10m
+Persistent=true
+
+[Install]
+WantedBy=default.target

@@ -219,11 +219,15 @@ for x in "${FILETYPES[@]}"; do
     # Check for the presence of helper utilities.
     # Assuming its valid and working if found.
     if [ "$(which identify)" == "" ]; then
-        echo "The 'identify' command is missing or not available. Ensure imagemagick is installed."
+        echo "ERROR: The 'identify' command is missing or not available. Ensure imagemagick is installed."
         exit 1
     fi
     if [ "$(which mediainfo)" == "" ]; then
-        echo "The 'mediainfo' command is missing or not available. Ensure mediainfo is installed."
+        echo "ERROR: The 'mediainfo' command is missing or not available. Ensure mediainfo is installed."
+        exit 1
+    fi
+    if [ "$(which exiftool)" == "" ]; then
+        echo "ERROR: The 'exiftool' command is missing or not available. Ensure perl-image-exiftool is installed."
         exit 1
     fi
 

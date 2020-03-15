@@ -1,23 +1,64 @@
 # exifsort
 
-The following script was written in bash on Ubuntu Linux and automatically sorts your images into directories based on the date and time the photo was taken. How does it do this? By making use of the EXIF data your digital camera stores inside the image. The date and time the photo was taken is stored in that EXIF data. When an image doesn't have EXIF data (such as when it was downloaded from the Internet, or taken from a camera that doesn't support adding EXIF data), it will use the files last-modified time.
+The following script was written in bash on Ubuntu Linux and automatically
+sorts your images into directories based on the date and time the photo was
+taken. How does it do this? By making use of the EXIF data your digital camera
+stores inside the image. The date and time the photo was taken is stored in
+that EXIF data. When an image doesn't have EXIF data (such as when it was
+downloaded from the Internet, or taken from a camera that doesn't support
+adding EXIF data), it will use the files last-modified time.
 
-First, this should be run in the top-most directory of wherever your pictures are stored. If you have pictures/foldername/somepics/ and pictures/anotherfolder/morepics, run it from your pictures/ directory.
+First, this should be run in the top-most directory of wherever your pictures
+are stored. If you have pictures/foldername/somepics/ and
+pictures/anotherfolder/morepics, run it from your pictures/ directory.
 
 This script requires ImageMagick.
 
-There are quite a few opportunities to improve this script -- and some cautionary notes as well -- marked within the script with FIXME tags. This script should be considered unmaintained, and I generally won't be updating it with any major changes, though pull requests are welcome.
+There are quite a few opportunities to improve this script -- and some
+cautionary notes as well -- marked within the script with FIXME tags. This
+script should be considered unmaintained, and I generally won't be updating it
+with any major changes, though pull requests are welcome.
 
-Usage: Copy the script into a file, editing options where appropriate, and save it. Make it executable and run it from the command line or window, from the directory where your pictures are stored. No command-line arguments. Back up your stuff first :)
+Usage: Copy the script into a file, editing options where appropriate, and save
+it. Make it executable and run it from the command line or window, from the
+directory where your pictures are stored. No command-line arguments. Back up
+your stuff first :)
 
-#### exiftool
+### exiftool
 
-Many folks have mentioned that `exiftool` is a much faster and cleaner way of what this script works to accomplish. 
+Many folks have mentioned that `exiftool` is a much faster and cleaner way of
+what this script works to accomplish.
 
-If you have `exiftool` installed, the following command will sort your files from $DIR to their own folders, sorted by date information from the exif data:
+If you have `exiftool` installed, the following command will sort your files
+from $DIR to their own folders, sorted by date information from the exif data:
 
-```
+``` sh
 exiftool "-Directory<DateTimeOriginal" -d "%Y/%Y-%m-%d" $DIR
 ```
 
 More information is here: https://sno.phy.queensu.ca/~phil/exiftool/#filename
+
+## Systemd
+Included are systemd unit files to run the exifsort tool periodically. To use
+the included systemd unit:
+
+1. Copy `exifsort.sh` script to your pictures directory.
+```sh
+$ cp exifsort.sh ~/pictures
+```
+
+2. Copy `exifsort@.timer` and `exifsort@.service` to your user systemd unit
+   directory.
+```sh
+$ cp exifsort\@* ~/.config/systemd/system
+```
+
+3. Reload the systemd daemon.
+```sh
+$ systemctl daemon-reload --user
+```
+
+4. Start the systemd unit timer
+```sh
+systemctl --user start exifsort@$(systemd-escape ~/pictures).timer
+```
