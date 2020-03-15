@@ -41,7 +41,7 @@ FILETYPES=("*.jpg" "*.jpeg" "*.png" "*.tif" "*.tiff" "*.gif" "*.xcf" "*.mp4" "*.
 #
 DIR_BLACKLIST=('*lost*' '*noexif*' '*duplicates*' '*slideshows*' '*raw*')
 #
-# The following will make no changes unless DRY_RUN is set to false.
+# Make no changes unless DRY_RUN is set to false.
 #
 DRY_RUN="true"
 #
