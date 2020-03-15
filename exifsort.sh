@@ -127,7 +127,7 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
             echo " Using LMDATE: $DATETIME"
         else
             echo " Moving to ./noexif/"
-            echo mkdir -p "${MOVETO}noexif" && echo mv -n "$2" "${MOVETO}noexif/"
+            echo DEBUG: mkdir -p "${MOVETO}noexif" && echo mv -n "$2" "${MOVETO}noexif/"
             if [[ "$DRY_RUN" == "false" ]]; then
                 mkdir -p "${MOVETO}noexif" && mv -n "$2" "${MOVETO}noexif/"
             fi
@@ -234,7 +234,7 @@ for x in "${FILETYPES[@]}"; do
     fi
 
     # Run
-    echo find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -print0 -exec sh -c "$0 doAction \"{}\"" \;
+    find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -print0 -exec sh -c "$0 doAction \"{}\"" \;
     echo "... end of $x"
 done
 
@@ -245,7 +245,8 @@ find . -iname '.thm' -delete
 echo "INFO: Removing Thumbs.db files ... "
 find . -name Thumbs.db -delete
 echo "INFO: done."
-echo "INFO: Cleaning up empty directories ... " find . -empty -delete
+echo "INFO: Cleaning up empty directories ... "
+find . -empty -delete
 echo "INFO: done."
 echo "INFO: Recreating dump directory ... "
 mkdir dump
