@@ -1,0 +1,11 @@
+[Unit]
+Description=Exifsort (%i)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%I
+Environment=PATH=$PATH:=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/vendor_perl
+ExecStart=%I/exifsort.sh
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+Nice=19
