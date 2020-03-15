@@ -206,7 +206,7 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
     exit
 fi;
 
-function join_by { local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
+function join_by { local d="$1"; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
 #
 ###############################################################################
 # Scanning (find) loop
@@ -239,12 +239,14 @@ for x in "${FILETYPES[@]}"; do
 
         # Since we added prefix above with spaces, we need a different IFS
         IFS=':'
-        dir_blacklist="$(join_by ' -prune -o ' ${temp[@]})"
+        dir_blacklist="$(join_by ' -prune -o ' ${temp[@]}) -prune"
         IFS=" "
     fi
 
     # Run
-    find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -exec sh -c "$0 doAction \"{}\"" \;
+    set -f
+    find . \( -regextype posix-awk -regex "./[0-9]{4}" -prune -o ${dir_blacklist} \) -o -type f -iname "$x" -exec sh -c "$0 doAction \"{}\"" \;
+    set +f
     echo "INFO: Finished scan for '$x'."
 done
 
