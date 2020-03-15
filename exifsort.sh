@@ -30,14 +30,16 @@ USE_FILE_EXT=TRUE
 #
 JPEG_TO_JPG=TRUE
 #
-#
 # The following is an array of filetypes that we intend to locate using find.
-# Any imagemagick-supported filetype can be used, but EXIF data is only present in
-# jpeg and tiff. Script will optionally use the last-modified time for sorting (see above)
+# Script will optionally use the last-modified time for sorting (see above).
 # Extensions are matched case-insensitive. *.jpg is treated the same as *.JPG, etc.
 # Can handle any file type; not just EXIF-enabled file types. See USE_LMDATE above.
 #
 FILETYPES=("*.jpg" "*.jpeg" "*.png" "*.tif" "*.tiff" "*.gif" "*.xcf" "*.mp4" "*.avi" "*.mov")
+#
+# The following is an array of directories to ignore when finding folders.
+#
+DIR_BLACKLIST=('*lost*' '*noexif*' '*duplicates*' '*slideshows*' '*raw*')
 #
 # Optional: Prefix of new top-level directory to kjmove sorted photos to.
 # if you use MOVETO, it MUST have a trailing slash! Can be a relative pathspec, but an
@@ -189,6 +191,8 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
     echo -e "INFO: done.\n"
     exit
 fi;
+
+function join_by { local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
 #
 ###############################################################################
 # Scanning (find) loop
@@ -198,19 +202,31 @@ fi;
 # Could probably be optimized into a function instead, but I don't think there's an
 # advantage performance-wise. Suggestions are welcome at the URL at the top.
 for x in "${FILETYPES[@]}"; do
-    # Check for the presence of imagemagick and the identify command.
+    # Check for the presence of helper utilities.
     # Assuming its valid and working if found.
-    I=`which identify`
-    if [ "$I" == "" ]; then
-    echo "The 'identify' command is missing or not available."
-    echo "Is imagemagick installed?"
-    exit 1
-    fi;
+    if [ "$(which identify)" == "" ]; then
+        echo "The 'identify' command is missing or not available. Ensure imagemagick is installed."
+        exit 1
+    fi
+    if [ "$(which mediainfo)" == "" ]; then
+        echo "The 'mediainfo' command is missing or not available. Ensure mediainfo is installed."
+        exit 1
+    fi
+
     echo "Scanning for $x..."
 
-    # FIXME: Eliminate problems with unusual characters in filenames.
-    # Currently the exec call will fail and they will be skipped.
-    find . \( -iname "*lost*" -prune -o -regextype posix-awk -regex "./[0-9]{4}" -prune -o -iname *"noexif"* -prune -o -iname *"duplicates"* -prune -o -iname *"slideshows"* -prune -o -iname *"raw"* -prune \) -o -type f -iname "$x" -print0 -exec sh -c "$0 doAction \"{}\"" \;
+    # Make blacklist from arguments
+    if [[ ${#DIR_BLACKLIST[@]} -ne 0 ]]; then
+        temp=( "${DIR_BLACKLIST[@]/#/-iname }" )
+
+        # Since we added prefix above with spaces, we need a different IFS
+        IFS=':'
+        dir_blacklist="$(join_by ' -prune -o ' ${temp[@]})"
+        IFS=" "
+    fi
+
+    # Run
+    echo find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -print0 -exec sh -c "$0 doAction \"{}\"" \;
     echo "... end of $x"
 done
 
@@ -221,9 +237,9 @@ find . -iname '.thm' -delete
 echo "INFO: Removing Thumbs.db files ... "
 find . -name Thumbs.db -delete
 echo "INFO: done."
-echo "INFO: Cleaning up empty directories ... "
-find . -empty -delete
+echo "INFO: Cleaning up empty directories ... " find . -empty -delete
 echo "INFO: done."
+echo "INFO: Recreating dump directory ... "
 mkdir dump
 touch dump/.exclude_from_backup
-echo "INFO: Recreating dump directory ... "
+echo "INFO: done."
