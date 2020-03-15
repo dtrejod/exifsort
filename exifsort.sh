@@ -231,7 +231,7 @@ for x in "${FILETYPES[@]}"; do
         exit 1
     fi
 
-    echo "Scanning for $x..."
+    echo "INFO: Scanning for '$x'..."
 
     # Make blacklist from arguments
     if [[ ${#DIR_BLACKLIST[@]} -ne 0 ]]; then
@@ -245,7 +245,7 @@ for x in "${FILETYPES[@]}"; do
 
     # Run
     find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -exec sh -c "$0 doAction \"{}\"" \;
-    echo "... end of $x"
+    echo "INFO: Finished scan for '$x'."
 done
 
 # clean up empty directories. Find can do this easily.
