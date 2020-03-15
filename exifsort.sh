@@ -3,15 +3,22 @@
 #
 # The following are the only settings you should need to change:
 #
-# TS_AS_FILENAME: This can help eliminate duplicate images during sorting.
-# TRUE: File will be renamed to the Unix timestamp and its extension.
-# FALSE (any non-TRUE value): Filename is unchanged.
+#
+# DRY_RUN: Make no changes unless DRY_RUN is set to FALSE.
+# Valid options are "FALSE" or anything else (assumes TRUE).
+#
+DRY_RUN=TRUE
+#
+# TS_AS_FILENAME: File will be renamed to the Unix timestamp and its extension.
+# This can help eliminate duplicate images during sorting.
+# Valid options are "TRUE" or anything else (assumes FALSE).
+#
 TS_AS_FILENAME=TRUE
 #
 # USE_LMDATE: If this is TRUE, images without EXIF data will have their Last Modified file
 # timestamp used as a fallback. If FALSE, images without EXIF data are put in noexif/ for
 # manual sorting.
-# Valid options are "TRUE" or anything else (assumes FALSE). FIXME: Restrict to TRUE/FALSE
+# Valid options are "TRUE" or anything else (assumes FALSE).
 #
 USE_LMDATE=FALSE
 #
@@ -37,13 +44,9 @@ JPEG_TO_JPG=TRUE
 #
 FILETYPES=("*.jpg" "*.jpeg" "*.png" "*.tif" "*.tiff" "*.gif" "*.xcf" "*.mp4" "*.avi" "*.mov")
 #
-# The following is an array of directories to ignore when finding folders.
+# The following is an array of directories to ignore when finding folders. See '-name' flag for find.
 #
 DIR_BLACKLIST=('*lost*' '*noexif*' '*duplicates*' '*slideshows*' '*raw*')
-#
-# Make no changes unless DRY_RUN is set to false.
-#
-DRY_RUN="true"
 #
 # Optional: Prefix of new top-level directory to kjmove sorted photos to.
 # if you use MOVETO, it MUST have a trailing slash! Can be a relative pathspec, but an
@@ -71,9 +74,8 @@ MOVETO=""
 #
 # Are we supposed to run an action? If not, skip this entire section.
 if [[ "$1" == "doAction" && "$2" != "" ]]; then
-    exact_duplicate=1
     # Check for EXIF and process it
-    echo -n ": Checking EXIF... "
+    echo -e "\nINFO: Checking EXIF for '$2'."
 
     # DATETIME FORMAT: 2017:02:20 21:43:11
     DATETIME=$(exiftool -S -s "-datetimeoriginal" -d "%Y:%m:%d %H:%M:%S" "$2")
@@ -118,29 +120,31 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
     fi
 
     if [[ "$DATETIME" == "" ]]; then
-        echo "not found."
+        echo "WARN: Timestamp not found."
 
         if [[ $USE_LMDATE == "TRUE" ]]; then
             # I am deliberately not using %Y here because of the desire to display the date/time
             # to the user, though I could avoid a lot of post-processing by using it.
             DATETIME=`stat --printf='%y' "$2" | awk -F. '{print $1}' | sed y/-/:/`
-            echo " Using LMDATE: $DATETIME"
+            echo "INFO: LMDATE set to true, using last modified timestamp: $DATETIME."
         else
-            echo " Moving to ./noexif/"
-            echo DEBUG: mkdir -p "${MOVETO}noexif" && echo mv -n "$2" "${MOVETO}noexif/"
-            if [[ "$DRY_RUN" == "false" ]]; then
+            echo "INFO: Moving to './noexif/'."
+            echo "DEBUG: mkdir -p \"${MOVETO}noexif\" && mv -n \"$2\" \"${MOVETO}noexif/\""
+            if [[ "$DRY_RUN" != "FALSE" ]]; then
+                echo "INFO: Dry run detected, skipping."
+            elif [[ "$DRY_RUN" == "FALSE" ]]; then
                 mkdir -p "${MOVETO}noexif" && mv -n "$2" "${MOVETO}noexif/"
+                echo "INFO: Action done."
             fi
             exit
         fi
     else
-        echo "found: $DATETIME"
+        echo "INFO: Found timestamp '$DATETIME' from EXIF data."
     fi
 
     # The previous iteration of this script had a major bug which involved handling the
     # renaming of the file when using TS_AS_FILENAME. The following sections have been
     # rewritten to handle the action correctly as well as fix previously mangled filenames.
-    # FIXME: Collisions are not fully handled.
     #
     EDATE=`echo $DATETIME | awk -F' ' '{print $1}'`
 
@@ -155,7 +159,7 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
         EXT=`echo "$2" | awk -F. '{print $NF}' | tr '[:upper:]' '[:lower:]'`
     fi
 
-    # DIRectory NAME for the file move
+    # Directory NAME for the file move
     # sed issue for y command fix provided by thomas
     DIRNAME=`echo $EDATE | sed y-:-/-`
 
@@ -175,7 +179,7 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
         while [[ -e "${MOVETO}${DIRNAME}${MVCMD}" ]] ; do
             # Check if photo is duplicate
             if [[ $DIRNAME != "duplicates" ]] && ( $(nice -n 19 cmp "$2" "${MOVETO}${DIRNAME}${MVCMD}" >/dev/null) || ( $(file "$2" | grep -qE 'image|bitmap') && [[ "$(nice -n 19 convert "$2" "${MOVETO}${DIRNAME}${MVCMD}" -trim +repage -resize "256x256^!" -metric RMSE -format %[distortion] -compare info:)" == "0" ]] )) ; then
-                echo "INFO: Duplicate detected"
+                echo "WARN: Duplicate photo detected. Moving to duplicates directory."
                 DIRNAME="duplicates"
                 unset i
                 continue
@@ -186,17 +190,19 @@ if [[ "$1" == "doAction" && "$2" != "" ]]; then
         done
         unset i
 
-        echo "INFO: Will rename to $(basename $MVCMD)"
+        echo "INFO: Will rename to '$(basename $MVCMD)'."
     fi
 
     # Fix permissions
     chmod 644 "$2"
 
-    echo DEBUG: mkdir -p "${MOVETO}${DIRNAME}" && echo mv -n "$2" "${MOVETO}${DIRNAME}${MVCMD}"
-    if [[ "$DRY_RUN" == "false" ]]; then
+    echo "DEBUG: mkdir -p \"${MOVETO}${DIRNAME}\" && mv -n \"$2\" \"${MOVETO}${DIRNAME}${MVCMD}\""
+    if [[ "$DRY_RUN" != "FALSE" ]]; then
+        echo "INFO: Dry run detected, skipping."
+    elif [[ "$DRY_RUN" == "FALSE" ]]; then
         mkdir -p "${MOVETO}${DIRNAME}" && mv -n "$2" "${MOVETO}${DIRNAME}${MVCMD}"
+        echo -e "INFO: Action done.\n"
     fi
-    echo -e "INFO: done.\n"
     exit
 fi;
 
@@ -225,7 +231,7 @@ for x in "${FILETYPES[@]}"; do
 
     # Make blacklist from arguments
     if [[ ${#DIR_BLACKLIST[@]} -ne 0 ]]; then
-        temp=( "${DIR_BLACKLIST[@]/#/-iname }" )
+        temp=( "${DIR_BLACKLIST[@]/#/-name }" )
 
         # Since we added prefix above with spaces, we need a different IFS
         IFS=':'
@@ -234,21 +240,21 @@ for x in "${FILETYPES[@]}"; do
     fi
 
     # Run
-    find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -print0 -exec sh -c "$0 doAction \"{}\"" \;
+    find . \( -regextype posix-awk -regex "./[0-9]{4}" $dir_blacklist \) -o -type f -iname "$x" -exec sh -c "$0 doAction \"{}\"" \;
     echo "... end of $x"
 done
 
 # clean up empty directories. Find can do this easily.
 # Remove Thumbs.db first because of thumbnail caching
-echo "INFO: Removing THM files ... "
+echo "INFO: Removing THM files..."
 find . -iname '.thm' -delete
-echo "INFO: Removing Thumbs.db files ... "
+echo "INFO: Removing Thumbs.db files..."
 find . -name Thumbs.db -delete
 echo "INFO: done."
-echo "INFO: Cleaning up empty directories ... "
+echo "INFO: Cleaning up empty directories..."
 find . -empty -delete
 echo "INFO: done."
-echo "INFO: Recreating dump directory ... "
+echo "INFO: Recreating dump directory..."
 mkdir dump
 touch dump/.exclude_from_backup
 echo "INFO: done."
